@@ -1,0 +1,121 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Collective Walk</title>
+  </head>
+  <body>
+    <div id="content">
+      <div id="counter">
+        Time Elapsed: <span class="value">0</span>
+      </div>
+    </div>
+    <div class="scripts">
+      <script src="https://www.gstatic.com/firebasejs/5.5.5/firebase.js"></script>
+      <!-- <script src="https://www.gstatic.com/firebasejs/5.0.0/firebase-<PACKAGE>.js"></script> -->
+      <script>
+
+        var currentTime = 0;
+        var elapsedTime = 0;
+        var updateInterval = 10;
+        var environment = 'dev';
+        var elem = document.querySelector('#counter span.value');
+
+        firebase.initializeApp({
+          apiKey: "AIzaSyB1vslW5PV1sjXa_tf1AkCxwfzC9erH6m8",
+          authDomain: "collective-walk.firebaseapp.com",
+          databaseURL: "https://collective-walk.firebaseio.com",
+          projectId: "collective-walk",
+          storageBucket: "",
+          messagingSenderId: "74801505034"
+        });
+
+        var db = firebase.firestore();
+
+        db.settings({
+          timestampsInSnapshots: true
+        });
+
+        var reference = db.collection('time').doc(environment);
+
+        reference.onSnapshot(function(doc) {
+          if (doc.metadata.hasPendingWrites) {
+            return;
+          }
+          console.log('Current data');
+          currentTime = doc.data().value;
+        });
+
+        reference.get().then(function(doc) {
+
+          if (doc.exists) {
+
+            console.log('update', doc, doc.data());
+            setup(doc.data());
+
+          } else {
+
+            reference.set({
+              startTime: Date.now(),
+              value: currentTime
+            })
+            .then(function(doc) {
+              console.log('Document written with ID: ', doc.id);
+              setup({ value: getTime() });
+            })
+            .catch(function(error) {
+              console.log('Error adding document: ', error);
+            });
+
+          }
+
+        });
+
+        function setup(data) {
+
+          window.addEventListener('beforeunload', function(e) {
+            console.log('beforeunload');
+            update();
+            e.preventDefault();
+            e.returnValue = '';
+          }, false);
+
+          delayedUpdate();
+          currentTime = data.value;
+          loop();
+
+        }
+
+        function loop(t) {
+
+          elapsedTime = t / 1000;
+          elem.textContent = getTime();
+          requestAnimationFrame(loop);
+
+        }
+
+        function getTime() {
+          return Math.floor(currentTime + elapsedTime);
+        }
+
+        function delayedUpdate() {
+          setTimeout(update, updateInterval * 1000);
+        }
+
+        function update() {
+          return reference.update({
+            value: getTime()
+          })
+          .then(function() {
+            console.log('Document updated');
+            delayedUpdate();
+          })
+          .catch(function(error) {
+            console.log('Error updating document: ', error);
+          });
+        }
+
+      </script>
+    </div>
+  </body>
+</html>
